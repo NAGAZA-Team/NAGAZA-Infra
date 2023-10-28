@@ -5,7 +5,7 @@ resource "aws_rds_cluster" "common_prod" {
     aws_security_group.prod_db_sg.id
   ]
   engine_mode                     = "provisioned"
-  enable_http_endpoint            = true
+  enable_http_endpoint            = false
   master_username                 = "admin"
   master_password                 = random_password.rng-prod.result
   backup_retention_period         = 3

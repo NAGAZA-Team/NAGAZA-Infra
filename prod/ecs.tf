@@ -7,6 +7,26 @@ resource "aws_ecs_cluster" "nagaza-cluster-prod" {
   }
 }
 
+resource "aws_secretsmanager_secret" "nagaza-ecs-secret" {
+  name = "nagaza-ecs-secret"
+}
+
+resource "aws_secretsmanager_secret_version" "nagaza-ecs-secret-version" {
+  secret_id     = aws_secretsmanager_secret.nagaza-ecs-secret.id
+  secret_string = jsonencode({
+    "DB_URL" = local.db_url
+    "DB_PASSWORD" = local.db_password
+    "DB_USERNAME" = local.db_username
+    "AUTH_SECRET" = local.jwt_secret
+  })
+
+#  lifecycle {
+#    ignore_changes = [
+#      secret_string
+#    ]
+#  }
+}
+
 resource "aws_cloudwatch_log_group" "ecs" {
   name = "/ecs/"
 
@@ -23,7 +43,12 @@ resource "aws_ecs_task_definition" "nagaza-backend" {
   memory                   = 2048
   requires_compatibilities = ["FARGATE"]
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
-  depends_on = [aws_cloudwatch_log_group.ecs]
+  depends_on = [aws_cloudwatch_log_group.ecs, aws_secretsmanager_secret_version.nagaza-ecs-secret-version]
+  lifecycle {
+    ignore_changes = [
+
+    ]
+  }
   container_definitions = jsonencode([
     {
       name      = "api"
@@ -45,6 +70,24 @@ resource "aws_ecs_task_definition" "nagaza-backend" {
           "awslogs-stream-prefix" = "ecs"
         }
       }
+      secrets = [
+        {
+          name      = "DB_URL"
+          valueFrom = aws_secretsmanager_secret_version.nagaza-ecs-secret-version.arn
+        },
+        {
+          name      = "DB_USERNAME"
+          valueFrom = aws_secretsmanager_secret_version.nagaza-ecs-secret-version.arn
+        },
+        {
+          name      = "DB_PASSWORD"
+          valueFrom = aws_secretsmanager_secret_version.nagaza-ecs-secret-version.arn
+        },
+        {
+          name      = "AUTH_SECRET"
+          valueFrom = aws_secretsmanager_secret_version.nagaza-ecs-secret-version.arn
+        }
+      ]
     }
   ])
 }
@@ -72,6 +115,18 @@ resource "aws_iam_role" "ecs_task_execution_role" {
 resource "aws_iam_role_policy_attachment" "ecs_task_execution_role" {
   role       = aws_iam_role.ecs_task_execution_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+resource "aws_iam_role_policy" "ecs_secret_manager_policy" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy     = data.aws_iam_policy_document.secret_manager_policy.json
+}
+
+data "aws_iam_policy_document" "secret_manager_policy" {
+  statement {
+    effect = "Allow"
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = [aws_secretsmanager_secret.nagaza-ecs-secret.arn]
+  }
 }
 
 
@@ -144,8 +199,8 @@ resource "aws_security_group" "nagaza-prod-ecs-sg" {
 
   ingress {
     security_groups = [aws_security_group.nagaza-prod-alb-sg.id]
-    from_port       = 0
-    to_port         = 0
+    from_port       = local.container_port
+    to_port         = local.container_port
     protocol        = "tcp"
   }
 

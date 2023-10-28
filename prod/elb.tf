@@ -17,6 +17,13 @@ resource "aws_security_group" "nagaza-prod-alb-sg" {
   description = "Prod ALB Security Group"
   vpc_id      = aws_vpc.nagaza-vpc.id
 
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+  }
+
   ingress {
     from_port   = 80
     to_port     = 80
@@ -46,7 +53,7 @@ resource "aws_lb_target_group" "nagaza-prod" {
   health_check {
     enabled             = true
     interval            = 30
-    path                = "/"
+    path                = local.ecs_health_check_url
     timeout             = 10
     matcher             = "200"
     healthy_threshold   = 5
