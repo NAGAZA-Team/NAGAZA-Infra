@@ -11,6 +11,7 @@ resource "aws_rds_cluster" "common_prod" {
   backup_retention_period         = 3
   engine                          = "aurora-mysql"
   engine_version                  = "8.0.mysql_aurora.3.03.1"
+  skip_final_snapshot = true
 
   serverlessv2_scaling_configuration {
     max_capacity = 4
