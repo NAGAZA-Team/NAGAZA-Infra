@@ -218,6 +218,13 @@ resource "aws_security_group" "ecr-endpoint" {
     protocol        = "tcp"
   }
 
+  ingress {
+    cidr_blocks = ["0.0.0.0/0"]
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
+  }
+
   tags = {
     Name = "ecr-endpoint-sg"
   }

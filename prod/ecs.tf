@@ -8,15 +8,15 @@ resource "aws_ecs_cluster" "nagaza-cluster-prod" {
 }
 
 resource "aws_secretsmanager_secret" "nagaza-ecs-secret" {
-  name = "nagaza-ecs-secret"
+  name = "nagaza-ecs-secret-prod"
 }
 
 resource "aws_secretsmanager_secret_version" "nagaza-ecs-secret-version" {
   secret_id     = aws_secretsmanager_secret.nagaza-ecs-secret.id
   secret_string = jsonencode({
-    "DB_URL" = local.db_url
-    "DB_PASSWORD" = local.db_password
-    "DB_USERNAME" = local.db_username
+    "MYSQL_URL" = local.db_url
+    "MYSQL_PASSWORD" = local.db_password
+    "MYSQL_USERNAME" = local.db_username
     "AUTH_SECRET" = local.jwt_secret
   })
 
@@ -72,20 +72,20 @@ resource "aws_ecs_task_definition" "nagaza-backend" {
       }
       secrets = [
         {
-          name      = "DB_URL"
-          valueFrom = aws_secretsmanager_secret_version.nagaza-ecs-secret-version.arn
+          name      = "MYSQL_URL"
+          valueFrom = "${aws_secretsmanager_secret_version.nagaza-ecs-secret-version.arn}:MYSQL_URL::"
         },
         {
-          name      = "DB_USERNAME"
-          valueFrom = aws_secretsmanager_secret_version.nagaza-ecs-secret-version.arn
+          name      = "MYSQL_USERNAME"
+          valueFrom = "${aws_secretsmanager_secret_version.nagaza-ecs-secret-version.arn}:MYSQL_USERNAME::"
         },
         {
-          name      = "DB_PASSWORD"
-          valueFrom = aws_secretsmanager_secret_version.nagaza-ecs-secret-version.arn
+          name      = "MYSQL_PASSWORD"
+          valueFrom = "${aws_secretsmanager_secret_version.nagaza-ecs-secret-version.arn}:MYSQL_PASSWORD::"
         },
         {
           name      = "AUTH_SECRET"
-          valueFrom = aws_secretsmanager_secret_version.nagaza-ecs-secret-version.arn
+          valueFrom = "${aws_secretsmanager_secret_version.nagaza-ecs-secret-version.arn}:AUTH_SECRET::"
         }
       ]
     }
